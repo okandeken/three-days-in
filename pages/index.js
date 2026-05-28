@@ -676,8 +676,7 @@ export default function Home() {
             }}>{tr.changeDestination}</button>
           </>
         )}
-      </div>
-      }</div>
+      </div>}
     </>
   );
 }
