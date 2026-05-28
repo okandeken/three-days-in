@@ -201,8 +201,31 @@ export default function Home() {
   const [activeDay, setActiveDay] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
   const [fromCache, setFromCache] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef();
+  const debounceRef = useRef(null);
   const tr = T[lang];
+
+  const fetchSuggestions = (value) => {
+    clearTimeout(debounceRef.current);
+    if (!value || value.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`);
+        const data = await res.json();
+        setSuggestions(data.predictions || []);
+        setShowSuggestions((data.predictions || []).length > 0);
+      } catch (_) {}
+    }, 300);
+  };
+
+  const selectSuggestion = (s) => {
+    setQuery(s.name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    handleSearch(s.name);
+  };
 
   const handleSearch = async (q) => {
     const target = q || query;
@@ -321,10 +344,11 @@ export default function Home() {
             }}
             placeholder={tr.placeholder}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            onChange={(e) => { setQuery(e.target.value); fetchSuggestions(e.target.value); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { setShowSuggestions(false); handleSearch(); } }}
+            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
           />
-          <button onClick={() => handleSearch()} disabled={loading || !query.trim()} style={{
+          <button onClick={() => { setShowSuggestions(false); handleSearch(); }} disabled={loading || !query.trim()} style={{
             position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
             background: ACCENT, border: "none", borderRadius: 10, width: 40, height: 40,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
@@ -334,6 +358,28 @@ export default function Home() {
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
+
+          {/* Autocomplete dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div style={{
+              position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0,
+              background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 12,
+              overflow: "hidden", zIndex: 100, boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+            }}>
+              {suggestions.map((s) => (
+                <div key={s.id} onMouseDown={() => selectSuggestion(s)} style={{
+                  padding: "12px 16px", cursor: "pointer", borderBottom: "1px solid #222",
+                  display: "flex", flexDirection: "column", gap: 2,
+                  transition: "background 0.1s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "#242424"}
+                onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                  <span style={{ fontSize: 14, color: TEXT, fontWeight: 500 }}>{s.name}</span>
+                  <span style={{ fontSize: 11, color: MUTED }}>{s.full}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Loading */}
