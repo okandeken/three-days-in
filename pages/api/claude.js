@@ -1,15 +1,3 @@
-import { Redis } from "@upstash/redis";
-
-let redis = null;
-try {
-  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-    redis = new Redis({
-      url: process.env.KV_REST_API_URL,
-      token: process.env.KV_REST_API_TOKEN,
-    });
-  }
-} catch (_) {}
-
 const PROMPTS = {
   itinerary: {
     es: (city) => `Crea un itinerario de viaje de 3 días para ${city}. Usa EXACTAMENTE este formato:
@@ -86,37 +74,15 @@ export default async function handler(req, res) {
   const { type, city, placeName, lang = "es" } = req.body;
   if (!type || !city) return res.status(400).json({ error: "Missing params" });
 
-  // DIAGNOSTIC: log whether API key exists
-  const keyExists = !!process.env.ANTHROPIC_API_KEY;
-  const keyLength = process.env.ANTHROPIC_API_KEY?.length || 0;
-  console.log(`[three-days-in] API key exists: ${keyExists}, length: ${keyLength}, type: ${type}, city: ${city}`);
-
-  const safeCity = city.toLowerCase().trim().replace(/\s+/g, "-");
   const safeLang = ["es", "en", "gl"].includes(lang) ? lang : "es";
 
-  const cacheKey =
-    type === "itinerary"
-      ? `itinerary:${safeLang}:${safeCity}`
-      : `history:${safeLang}:${safeCity}:${placeName?.toLowerCase().trim().replace(/\s+/g, "-")}`;
-
-  // Try cache first
-  if (redis) {
-    try {
-      const cached = await redis.get(cacheKey);
-      if (cached) {
-        console.log(`[three-days-in] Cache hit for: ${cacheKey}`);
-        return res.status(200).json({ text: cached, fromCache: true });
-      }
-    } catch (_) {}
-  }
-
-  // Build prompt
   const prompt =
     type === "itinerary"
       ? PROMPTS.itinerary[safeLang](city)
       : PROMPTS.history[safeLang](placeName, city);
 
-  // Call Claude
+  console.log(`[three-days-in] Calling Anthropic for ${type}: ${city}`);
+
   const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
@@ -125,29 +91,15 @@ export default async function handler(req, res) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }],
     }),
   });
 
   const data = await anthropicRes.json();
-
-  // DIAGNOSTIC: log Anthropic response status and any errors
-  console.log(`[three-days-in] Anthropic status: ${anthropicRes.status}`);
-  if (data.error) {
-    console.log(`[three-days-in] Anthropic error: ${JSON.stringify(data.error)}`);
-    return res.status(200).json({ text: "", error: data.error.message });
-  }
+  console.log(`[three-days-in] Anthropic status: ${anthropicRes.status}, error: ${data.error?.message || "none"}`);
 
   const text = data.content?.find((b) => b.type === "text")?.text || "";
-
-  // Save to cache forever
-  if (redis && text) {
-    try {
-      await redis.set(cacheKey, text);
-    } catch (_) {}
-  }
-
-  res.status(200).json({ text, fromCache: false });
+  res.status(200).json({ text });
 }
