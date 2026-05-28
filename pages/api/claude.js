@@ -1,4 +1,11 @@
-import { kv } from "@vercel/kv";
+import { Redis } from "@upstash/redis";
+
+let redis;
+try {
+  redis = Redis.fromEnv();
+} catch (_) {
+  redis = null;
+}
 
 const PROMPTS = {
   itinerary: {
@@ -85,13 +92,13 @@ export default async function handler(req, res) {
       : `history:${safeLang}:${safeCity}:${placeName?.toLowerCase().trim().replace(/\s+/g, "-")}`;
 
   // Try cache first
-  try {
-    const cached = await kv.get(cacheKey);
-    if (cached) {
-      return res.status(200).json({ text: cached, fromCache: true });
-    }
-  } catch (_) {
-    // KV not available, continue without cache
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        return res.status(200).json({ text: cached, fromCache: true });
+      }
+    } catch (_) {}
   }
 
   // Build prompt
@@ -118,11 +125,11 @@ export default async function handler(req, res) {
   const data = await response.json();
   const text = data.content?.find((b) => b.type === "text")?.text || "";
 
-  // Save to cache — expires in 60 days
-  try {
-    await kv.set(cacheKey, text);
-  } catch (_) {
-    // KV not available, skip
+  // Save to cache forever
+  if (redis) {
+    try {
+      await redis.set(cacheKey, text);
+    } catch (_) {}
   }
 
   res.status(200).json({ text, fromCache: false });
