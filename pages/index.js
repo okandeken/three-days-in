@@ -106,19 +106,70 @@ async function callAPI(body) {
   return data.text || "";
 }
 
+const SOURCES_CONFIG = [
+  { key: "wikipedia",    label: "Wikipedia",    icon: "📖", color: "#E8C547", bg: "#E8C54715", tags: { es: "Historia",          en: "History",         gl: "Historia"          } },
+  { key: "wikivoyage",   label: "Wikivoyage",   icon: "🗺",  color: "#4CAF50", bg: "#4CAF5015", tags: { es: "Qué ver",           en: "What to see",     gl: "Que ver"           } },
+  { key: "atlas_obscura",label: "Atlas Obscura",icon: "🔮", color: "#FF6830", bg: "#FF683015", tags: { es: "Secretos",          en: "Secrets",         gl: "Segredos"          } },
+  { key: "reddit",       label: "Reddit",       icon: "👾", color: "#FF4500", bg: "#FF450015", tags: { es: "Viajeros reales",   en: "Real travelers",  gl: "Viaxeiros reais"   } },
+  { key: "bbc",          label: "BBC History",  icon: "📰", color: "#BB1919", bg: "#BB191915", tags: { es: "Contexto histórico",en: "Historical context",gl:"Contexto histórico"} },
+  { key: "smarthistory", label: "Smarthistory", icon: "🎨", color: "#9B59B6", bg: "#9B59B615", tags: { es: "Arte & Cultura",    en: "Art & Culture",   gl: "Arte & Cultura"    } },
+];
+
+function SourceBlock({ config, data, lang }) {
+  if (!data) return null;
+  const tag = config.tags[lang] || config.tags.es;
+
+  const header = (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ width: 22, height: 22, borderRadius: 6, background: config.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{config.icon}</div>
+        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600, color: config.color }}>{config.label}</span>
+      </div>
+      <span style={{ fontSize: 8, color: "#444", border: "1px solid #222", padding: "2px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.8px" }}>{tag}</span>
+    </div>
+  );
+
+  if (config.key === "reddit" && data.posts) {
+    return (
+      <div style={{ padding: "12px 16px", borderBottom: "1px solid #161616" }}>
+        {header}
+        {data.posts.map((post, i) => (
+          <div key={i} style={{ background: "#111", borderLeft: `2px solid ${config.color}`, padding: "8px 10px", borderRadius: "0 6px 6px 0", marginBottom: i < data.posts.length - 1 ? 6 : 0 }}>
+            <div style={{ fontSize: 11, color: "#8A8580", lineHeight: 1.6, fontStyle: "italic" }}>"{post.text.slice(0, 220)}{post.text.length > 220 ? "…" : ""}"</div>
+            <div style={{ fontSize: 9, color: "#444", marginTop: 4 }}>u/{post.author} · r/{post.subreddit} · {post.score} pts</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: "12px 16px", borderBottom: "1px solid #161616" }}>
+      {header}
+      <div style={{ fontSize: 11.5, color: "#8A8580", lineHeight: 1.65 }}>{data.text}</div>
+    </div>
+  );
+}
+
 function PlaceCard({ place, index, city, lang }) {
   const [expanded, setExpanded] = useState(false);
-  const [history, setHistory] = useState(null);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-  const tr = T[lang];
+  const [sources, setSources] = useState(null);
+  const [loadingSources, setLoadingSources] = useState(false);
 
   const toggle = async () => {
-    if (!expanded && !history) {
+    if (!expanded && !sources) {
       setExpanded(true);
-      setLoadingHistory(true);
-      const text = await callAPI({ type: "history", city, placeName: place.name, lang });
-      setHistory(text);
-      setLoadingHistory(false);
+      setLoadingSources(true);
+      try {
+        const res = await fetch("/api/sources", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ place: place.name, city, lang }),
+        });
+        const data = await res.json();
+        setSources(data);
+      } catch (_) {}
+      setLoadingSources(false);
     } else {
       setExpanded(!expanded);
     }
@@ -131,8 +182,7 @@ function PlaceCard({ place, index, city, lang }) {
       background: CARD, borderRadius: 16, overflow: "hidden",
       border: `1px solid ${expanded ? "#2E2E2E" : "#1E1E1E"}`,
       animation: "fadeIn 0.4s ease forwards",
-      animationDelay: `${index * 0.06}s`,
-      opacity: 0,
+      animationDelay: `${index * 0.06}s`, opacity: 0,
     }}>
       <div style={{ padding: "16px 16px 14px", display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div style={{
@@ -142,17 +192,11 @@ function PlaceCard({ place, index, city, lang }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: 11, fontWeight: 500,
         }}>{index + 1}</div>
-
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, color: TEXT, lineHeight: 1.2, marginBottom: 4 }}>
-            {place.name}
-          </div>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 17, fontWeight: 700, color: TEXT, lineHeight: 1.2, marginBottom: 4 }}>{place.name}</div>
           <div style={{ fontSize: 11, color: MUTED, textTransform: "uppercase", letterSpacing: "1.2px" }}>{place.type}</div>
-          {place.description && (
-            <div style={{ fontSize: 13, color: "#9A9590", lineHeight: 1.5, marginTop: 4 }}>{place.description}</div>
-          )}
+          {place.description && <div style={{ fontSize: 13, color: "#9A9590", lineHeight: 1.5, marginTop: 4 }}>{place.description}</div>}
         </div>
-
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <a href={mapsUrl} target="_blank" rel="noreferrer" style={{
             background: "#1E1E1E", border: "none", borderRadius: 8, padding: "6px 10px",
@@ -160,7 +204,7 @@ function PlaceCard({ place, index, city, lang }) {
             fontSize: 11, color: MUTED, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap",
           }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
             </svg>
             Maps
           </a>
@@ -170,22 +214,28 @@ function PlaceCard({ place, index, city, lang }) {
             transform: expanded ? "rotate(180deg)" : "none",
             transition: "transform 0.2s, color 0.15s",
           }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 9l-7 7-7-7" />
-            </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 9l-7 7-7-7"/></svg>
           </button>
         </div>
       </div>
 
       {expanded && (
-        <div style={{ borderTop: "1px solid #1E1E1E", background: CARD2, padding: 16 }}>
-          <div style={{ fontSize: 10, color: ACCENT, textTransform: "uppercase", letterSpacing: 2, fontWeight: 500, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            ✦ {tr.historyLabel}
-          </div>
-          {loadingHistory
-            ? <div style={{ fontSize: 13, color: MUTED }}>{tr.historyLoading}</div>
-            : <div style={{ fontSize: 13.5, lineHeight: 1.7, color: "#B0ABA5" }}>{history}</div>
-          }
+        <div style={{ borderTop: "1px solid #1E1E1E" }}>
+          {loadingSources ? (
+            <div style={{ padding: 16, background: CARD2, fontSize: 13, color: MUTED }}>
+              Consultando fuentes...
+            </div>
+          ) : sources ? (
+            <div style={{ background: CARD2 }}>
+              {SOURCES_CONFIG.map(config => (
+                <SourceBlock key={config.key} config={config} data={sources[config.key]} lang={lang} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: 16, background: CARD2, fontSize: 13, color: MUTED }}>
+              No se pudo cargar la información.
+            </div>
+          )}
         </div>
       )}
     </div>
