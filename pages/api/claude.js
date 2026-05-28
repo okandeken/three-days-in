@@ -1,11 +1,14 @@
 import { Redis } from "@upstash/redis";
 
-let redis;
+let redis = null;
 try {
-  redis = Redis.fromEnv();
-} catch (_) {
-  redis = null;
-}
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    redis = new Redis({
+      url: process.env.KV_REST_API_URL,
+      token: process.env.KV_REST_API_TOKEN,
+    });
+  }
+} catch (_) {}
 
 const PROMPTS = {
   itinerary: {
@@ -126,7 +129,7 @@ export default async function handler(req, res) {
   const text = data.content?.find((b) => b.type === "text")?.text || "";
 
   // Save to cache forever
-  if (redis) {
+  if (redis && text) {
     try {
       await redis.set(cacheKey, text);
     } catch (_) {}
