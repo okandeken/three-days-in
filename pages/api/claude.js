@@ -86,6 +86,11 @@ export default async function handler(req, res) {
   const { type, city, placeName, lang = "es" } = req.body;
   if (!type || !city) return res.status(400).json({ error: "Missing params" });
 
+  // DIAGNOSTIC: log whether API key exists
+  const keyExists = !!process.env.ANTHROPIC_API_KEY;
+  const keyLength = process.env.ANTHROPIC_API_KEY?.length || 0;
+  console.log(`[three-days-in] API key exists: ${keyExists}, length: ${keyLength}, type: ${type}, city: ${city}`);
+
   const safeCity = city.toLowerCase().trim().replace(/\s+/g, "-");
   const safeLang = ["es", "en", "gl"].includes(lang) ? lang : "es";
 
@@ -99,6 +104,7 @@ export default async function handler(req, res) {
     try {
       const cached = await redis.get(cacheKey);
       if (cached) {
+        console.log(`[three-days-in] Cache hit for: ${cacheKey}`);
         return res.status(200).json({ text: cached, fromCache: true });
       }
     } catch (_) {}
@@ -111,7 +117,7 @@ export default async function handler(req, res) {
       : PROMPTS.history[safeLang](placeName, city);
 
   // Call Claude
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -125,7 +131,15 @@ export default async function handler(req, res) {
     }),
   });
 
-  const data = await response.json();
+  const data = await anthropicRes.json();
+
+  // DIAGNOSTIC: log Anthropic response status and any errors
+  console.log(`[three-days-in] Anthropic status: ${anthropicRes.status}`);
+  if (data.error) {
+    console.log(`[three-days-in] Anthropic error: ${JSON.stringify(data.error)}`);
+    return res.status(200).json({ text: "", error: data.error.message });
+  }
+
   const text = data.content?.find((b) => b.type === "text")?.text || "";
 
   // Save to cache forever
