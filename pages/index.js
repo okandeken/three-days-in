@@ -295,6 +295,9 @@ function PlaceCard({ place, index, city, lang }) {
 }
 
 export default function Home() {
+  const [authed, setAuthed] = useState(false);
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState(false);
   const [lang, setLang] = useState("en");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -310,6 +313,24 @@ export default function Home() {
   const tr = T[lang];
 
   const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
+
+  // Check saved auth
+  useEffect(() => {
+    const saved = typeof window !== "undefined" && localStorage.getItem("tdi_auth");
+    if (saved === "ok") setAuthed(true);
+  }, []);
+
+  const handleAuth = (e) => {
+    e.preventDefault();
+    if (pwInput === process.env.NEXT_PUBLIC_APP_PASSWORD || pwInput === "threedaysin") {
+      localStorage.setItem("tdi_auth", "ok");
+      setAuthed(true);
+      setPwError(false);
+    } else {
+      setPwError(true);
+      setPwInput("");
+    }
+  };
 
   // Load saved language on mount, default to "en"
   useEffect(() => {
@@ -425,7 +446,36 @@ export default function Home() {
         a:hover { opacity: 0.8; }
       `}</style>
 
-      <div style={{ maxWidth: 390, margin: "0 auto", minHeight: "100vh", background: BG }}>
+      {!authed && (
+        <div style={{ maxWidth: 390, margin: "0 auto", minHeight: "100vh", background: BG, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 32px" }}>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 32, fontWeight: 700, color: TEXT, marginBottom: 8, textAlign: "center" }}>
+            Three <span style={{ color: ACCENT }}>Days</span> In
+          </div>
+          <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: "uppercase", marginBottom: 40 }}>Acceso privado</div>
+          <form onSubmit={handleAuth} style={{ width: "100%" }}>
+            <input
+              autoFocus
+              type="password"
+              placeholder="Contraseña"
+              value={pwInput}
+              onChange={e => { setPwInput(e.target.value); setPwError(false); }}
+              style={{
+                width: "100%", background: CARD, border: `1px solid ${pwError ? "#E74C3C" : "#2A2A2A"}`,
+                borderRadius: 14, padding: "16px 20px", color: TEXT,
+                fontFamily: "'DM Sans', sans-serif", fontSize: 16, outline: "none",
+                marginBottom: 12, WebkitAppearance: "none",
+              }}
+            />
+            {pwError && <div style={{ fontSize: 12, color: "#E74C3C", marginBottom: 12, textAlign: "center" }}>Contraseña incorrecta</div>}
+            <button type="submit" style={{
+              width: "100%", background: ACCENT, border: "none", borderRadius: 14,
+              padding: "16px", color: "#000", fontFamily: "'DM Sans', sans-serif",
+              fontSize: 15, fontWeight: 600, cursor: "pointer",
+            }}>Entrar</button>
+          </form>
+        </div>
+      )}
+      {authed && <div style={{ maxWidth: 390, margin: "0 auto", minHeight: "100vh", background: BG }}>
 
         {/* Header */}
         <div style={{ padding: "52px 24px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
@@ -627,6 +677,7 @@ export default function Home() {
           </>
         )}
       </div>
+      }</div>
     </>
   );
 }
