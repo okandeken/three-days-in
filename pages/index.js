@@ -106,6 +106,15 @@ async function callAPI(body) {
   return data.text || "";
 }
 
+const CATEGORY_CONFIG = {
+  historia:     { label: { es: "Historia",           en: "History",          gl: "Historia"           }, color: "#9B59B6", bg: "#9B59B620" },
+  secretos:     { label: { es: "Secretos",           en: "Secrets",          gl: "Segredos"           }, color: "#FF6830", bg: "#FF683020" },
+  curiosidades: { label: { es: "Curiosidades",       en: "Curiosities",      gl: "Curiosidades"       }, color: "#E8C547", bg: "#E8C54720" },
+  consejos:     { label: { es: "Consejos prácticos", en: "Practical tips",   gl: "Consellos prácticos"}, color: "#4CAF50", bg: "#4CAF5020" },
+  arte:         { label: { es: "Arte & Cultura",     en: "Art & Culture",    gl: "Arte & Cultura"     }, color: "#4A90E2", bg: "#4A90E220" },
+  contexto:     { label: { es: "Contexto local",     en: "Local context",    gl: "Contexto local"     }, color: "#E74C3C", bg: "#E74C3C20" },
+};
+
 const SOURCES_CONFIG = [
   { key: "wikipedia",    label: "Wikipedia",    icon: "📖", color: "#E8C547", bg: "#E8C54715", tags: { es: "Historia",          en: "History",         gl: "Historia"          } },
   { key: "wikivoyage",   label: "Wikivoyage",   icon: "🗺",  color: "#4CAF50", bg: "#4CAF5015", tags: { es: "Qué ver",           en: "What to see",     gl: "Que ver"           } },
@@ -115,38 +124,59 @@ const SOURCES_CONFIG = [
   { key: "smarthistory", label: "Smarthistory", icon: "🎨", color: "#9B59B6", bg: "#9B59B615", tags: { es: "Arte & Cultura",    en: "Art & Culture",   gl: "Arte & Cultura"    } },
 ];
 
-function SourceBlock({ config, data, lang }) {
-  if (!data) return null;
-  const tag = config.tags[lang] || config.tags.es;
-
-  const header = (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <div style={{ width: 22, height: 22, borderRadius: 6, background: config.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{config.icon}</div>
-        <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600, color: config.color }}>{config.label}</span>
+function BriefSection({ brief, lang }) {
+  if (!brief || brief.length === 0) return null;
+  return (
+    <div style={{ padding: "14px 16px 10px", borderBottom: "1px solid #1E1E1E" }}>
+      <div style={{ fontSize: 9, color: "#555", textTransform: "uppercase", letterSpacing: 2, marginBottom: 10, fontWeight: 600 }}>✦ Resumen</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+        {brief.map((item, i) => {
+          const cfg = CATEGORY_CONFIG[item.category];
+          if (!cfg || !item.text) return null;
+          return (
+            <div key={i} style={{ background: cfg.bg, borderLeft: `2px solid ${cfg.color}`, borderRadius: "0 8px 8px 0", padding: "8px 10px" }}>
+              <div style={{ fontSize: 8, color: cfg.color, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 700, marginBottom: 4 }}>
+                {cfg.label[lang] || cfg.label.es}
+              </div>
+              <div style={{ fontSize: 12, color: "#B0ABA5", lineHeight: 1.6 }}>{item.text}</div>
+            </div>
+          );
+        })}
       </div>
-      <span style={{ fontSize: 8, color: "#444", border: "1px solid #222", padding: "2px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.8px" }}>{tag}</span>
     </div>
   );
+}
 
-  if (config.key === "reddit" && data.posts) {
-    return (
-      <div style={{ padding: "12px 16px", borderBottom: "1px solid #161616" }}>
-        {header}
-        {data.posts.map((post, i) => (
-          <div key={i} style={{ background: "#111", borderLeft: `2px solid ${config.color}`, padding: "8px 10px", borderRadius: "0 6px 6px 0", marginBottom: i < data.posts.length - 1 ? 6 : 0 }}>
-            <div style={{ fontSize: 11, color: "#8A8580", lineHeight: 1.6, fontStyle: "italic" }}>"{post.text.slice(0, 220)}{post.text.length > 220 ? "…" : ""}"</div>
-            <div style={{ fontSize: 9, color: "#444", marginTop: 4 }}>u/{post.author} · r/{post.subreddit} · {post.score} pts</div>
-          </div>
-        ))}
-      </div>
-    );
-  }
+function SourceBlock({ config, data, lang, open, onToggle }) {
+  if (!data) return null;
+  const tag = config.tags[lang] || config.tags.es;
+  const hasContent = config.key === "reddit" ? data.posts?.length > 0 : !!data.text;
+  if (!hasContent) return null;
 
   return (
-    <div style={{ padding: "12px 16px", borderBottom: "1px solid #161616" }}>
-      {header}
-      <div style={{ fontSize: 11.5, color: "#8A8580", lineHeight: 1.65 }}>{data.text}</div>
+    <div style={{ borderBottom: "1px solid #161616" }}>
+      <div onClick={onToggle} style={{ padding: "10px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 22, height: 22, borderRadius: 6, background: config.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}>{config.icon}</div>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 600, color: config.color }}>{config.label}</span>
+          <span style={{ fontSize: 8, color: "#3A3A3A", border: "1px solid #222", padding: "2px 6px", borderRadius: 3, textTransform: "uppercase", letterSpacing: "0.8px" }}>{tag}</span>
+        </div>
+        <span style={{ color: open ? config.color : "#444", fontSize: 10, transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none" }}>▼</span>
+      </div>
+      {open && (
+        <div style={{ padding: "0 16px 12px" }}>
+          {config.key === "reddit" && data.posts ? (
+            data.posts.map((post, i) => (
+              <div key={i} style={{ background: "#111", borderLeft: `2px solid ${config.color}`, padding: "8px 10px", borderRadius: "0 6px 6px 0", marginBottom: i < data.posts.length - 1 ? 6 : 0 }}>
+                <div style={{ fontSize: 11, color: "#8A8580", lineHeight: 1.6, fontStyle: "italic" }}>"{post.text.slice(0, 220)}{post.text.length > 220 ? "…" : ""}"</div>
+                <div style={{ fontSize: 9, color: "#444", marginTop: 4 }}>u/{post.author} · r/{post.subreddit} · {post.score} pts</div>
+              </div>
+            ))
+          ) : (
+            <div style={{ fontSize: 11.5, color: "#8A8580", lineHeight: 1.65 }}>{data.text}</div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -155,6 +185,7 @@ function PlaceCard({ place, index, city, lang }) {
   const [expanded, setExpanded] = useState(false);
   const [sources, setSources] = useState(null);
   const [loadingSources, setLoadingSources] = useState(false);
+  const [openSource, setOpenSource] = useState(null);
 
   const toggle = async () => {
     if (!expanded && !sources) {
@@ -175,7 +206,9 @@ function PlaceCard({ place, index, city, lang }) {
     }
   };
 
+  const toggleSource = (key) => setOpenSource(prev => prev === key ? null : key);
   const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(place.name + " " + city)}`;
+  const hasAnySources = sources && SOURCES_CONFIG.some(c => sources[c.key]);
 
   return (
     <div style={{
@@ -220,21 +253,28 @@ function PlaceCard({ place, index, city, lang }) {
       </div>
 
       {expanded && (
-        <div style={{ borderTop: "1px solid #1E1E1E" }}>
+        <div style={{ borderTop: "1px solid #1E1E1E", background: CARD2 }}>
           {loadingSources ? (
-            <div style={{ padding: 16, background: CARD2, fontSize: 13, color: MUTED }}>
-              Consultando fuentes...
-            </div>
-          ) : sources ? (
-            <div style={{ background: CARD2 }}>
-              {SOURCES_CONFIG.map(config => (
-                <SourceBlock key={config.key} config={config} data={sources[config.key]} lang={lang} />
-              ))}
-            </div>
+            <div style={{ padding: 16, fontSize: 13, color: MUTED }}>Consultando fuentes...</div>
+          ) : !hasAnySources ? (
+            <div style={{ padding: 16, fontSize: 13, color: MUTED }}>No hay información disponible para este lugar.</div>
           ) : (
-            <div style={{ padding: 16, background: CARD2, fontSize: 13, color: MUTED }}>
-              No se pudo cargar la información.
-            </div>
+            <>
+              <BriefSection brief={sources.brief} lang={lang} />
+              <div style={{ padding: "10px 16px 6px" }}>
+                <div style={{ fontSize: 9, color: "#444", textTransform: "uppercase", letterSpacing: 2, fontWeight: 600 }}>Fuentes</div>
+              </div>
+              {SOURCES_CONFIG.map(config => (
+                <SourceBlock
+                  key={config.key}
+                  config={config}
+                  data={sources[config.key]}
+                  lang={lang}
+                  open={openSource === config.key}
+                  onToggle={() => toggleSource(config.key)}
+                />
+              ))}
+            </>
           )}
         </div>
       )}
