@@ -199,6 +199,8 @@ export default function Home() {
   const [city, setCity] = useState(null);
   const [days, setDays] = useState([]);
   const [activeDay, setActiveDay] = useState(0);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [fromCache, setFromCache] = useState(null);
   const inputRef = useRef();
   const tr = T[lang];
 
@@ -208,13 +210,39 @@ export default function Home() {
     setLoading(true);
     setCity(null);
     setDays([]);
+    setErrorMsg(null);
+    setFromCache(null);
     try {
-      const text = await callAPI({ type: "itinerary", city: target.trim(), lang });
+      const res = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "itinerary", city: target.trim(), lang }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setErrorMsg(`Error de API: ${data.error}`);
+        setLoading(false);
+        return;
+      }
+      const text = data.text || "";
+      if (!text) {
+        setErrorMsg(`La API no devolvió texto. Estado HTTP: ${res.status}`);
+        setLoading(false);
+        return;
+      }
       const parsed = parseItinerary(text, lang);
+      if (!parsed) {
+        setErrorMsg(`No se pudo parsear la respuesta. Texto recibido: ${text.slice(0, 200)}`);
+        setLoading(false);
+        return;
+      }
       setCity(target.trim());
-      setDays(parsed || []);
+      setDays(parsed);
+      setFromCache(data.fromCache === true);
       setActiveDay(0);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      setErrorMsg(`Error de red: ${e.message}`);
+    }
     setLoading(false);
   };
 
@@ -324,6 +352,13 @@ export default function Home() {
           </div>
         )}
 
+        {/* Error */}
+        {!loading && errorMsg && (
+          <div style={{ margin: "0 24px 24px", padding: 16, background: "#1a0a0a", border: "1px solid #5a1a1a", borderRadius: 12, fontSize: 13, color: "#ff8080", lineHeight: 1.6 }}>
+            ⚠️ {errorMsg}
+          </div>
+        )}
+
         {/* Welcome */}
         {!loading && !city && (
           <div style={{ padding: "0 24px 60px", textAlign: "center", animation: "fadeIn 0.4s ease" }}>
@@ -350,7 +385,10 @@ export default function Home() {
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
                 <span style={{ fontSize: 12, color: MUTED, letterSpacing: "1.5px", textTransform: "uppercase" }}>3 {tr.days}</span>
                 <div style={{ width: 3, height: 3, background: MUTED, borderRadius: "50%" }} />
-                <span style={{ fontSize: 11, color: ACCENT, letterSpacing: 1, textTransform: "uppercase", fontWeight: 500 }}>{tr.aiTag}</span>
+                <span style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", fontWeight: 500,
+                  color: fromCache ? "#4CAF50" : ACCENT }}>
+                  {fromCache ? "⚡ Caché — sin tokens" : "✦ Generado con IA"}
+                </span>
               </div>
             </div>
 
