@@ -1,3 +1,13 @@
+import { Redis } from "@upstash/redis";
+
+let redis = null;
+try {
+  redis = new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN,
+  });
+} catch (_) {}
+
 const PROMPTS = {
   itinerary: {
     es: (city) => `Crea un itinerario de viaje de 3 días para ${city}. Usa EXACTAMENTE este formato:
@@ -74,8 +84,28 @@ export default async function handler(req, res) {
   const { type, city, placeName, lang = "es" } = req.body;
   if (!type || !city) return res.status(400).json({ error: "Missing params" });
 
+  const safeCity = city.toLowerCase().trim().replace(/\s+/g, "-");
   const safeLang = ["es", "en", "gl"].includes(lang) ? lang : "es";
 
+  const cacheKey =
+    type === "itinerary"
+      ? `itinerary:${safeLang}:${safeCity}`
+      : `history:${safeLang}:${safeCity}:${placeName?.toLowerCase().trim().replace(/\s+/g, "-")}`;
+
+  // Try cache first
+  if (redis) {
+    try {
+      const cached = await redis.get(cacheKey);
+      if (cached) {
+        console.log(`[three-days-in] Cache hit: ${cacheKey}`);
+        return res.status(200).json({ text: cached, fromCache: true });
+      }
+    } catch (e) {
+      console.log(`[three-days-in] Cache read error: ${e.message}`);
+    }
+  }
+
+  // Build prompt
   const prompt =
     type === "itinerary"
       ? PROMPTS.itinerary[safeLang](city)
@@ -101,5 +131,16 @@ export default async function handler(req, res) {
   console.log(`[three-days-in] Anthropic status: ${anthropicRes.status}, error: ${data.error?.message || "none"}`);
 
   const text = data.content?.find((b) => b.type === "text")?.text || "";
-  res.status(200).json({ text });
+
+  // Save to cache forever
+  if (redis && text) {
+    try {
+      await redis.set(cacheKey, text);
+      console.log(`[three-days-in] Cached: ${cacheKey}`);
+    } catch (e) {
+      console.log(`[three-days-in] Cache write error: ${e.message}`);
+    }
+  }
+
+  res.status(200).json({ text, fromCache: false });
 }
