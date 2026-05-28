@@ -575,24 +575,37 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Google Maps itinerary button */}
+            {/* Itinerario button */}
             {(() => {
               const places = days[activeDay]?.places || [];
               if (places.length === 0) return null;
-              const waypoints = places.map(p => encodeURIComponent(p.name + " " + city));
-              const mapsUrl = `https://www.google.com/maps/dir/${waypoints.join("/")}`;
+              // Google Maps route with all stops
+              const gmUrl = `https://www.google.com/maps/dir/${places.map(p => encodeURIComponent(p.name + " " + city)).join("/")}`;
+              // OpenStreetMap search for the city (free, no API key)
+              const osmUrl = `https://www.openstreetmap.org/search?query=${encodeURIComponent(city)}`;
               return (
-                <div style={{ padding: "0 24px 12px" }}>
-                  <a href={mapsUrl} target="_blank" rel="noreferrer" style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                <div style={{ padding: "0 24px 12px", display: "flex", gap: 8 }}>
+                  <a href={gmUrl} target="_blank" rel="noreferrer" style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                     background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 12,
-                    padding: "10px 16px", textDecoration: "none", color: "#9A9590",
-                    fontSize: 13, fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+                    padding: "10px 12px", textDecoration: "none", color: "#9A9590",
+                    fontSize: 12, fontFamily: "'DM Sans', sans-serif",
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth="2.5">
                       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
                     </svg>
-                    Ver itinerario del día en Maps
+                    Google Maps
+                  </a>
+                  <a href={osmUrl} target="_blank" rel="noreferrer" style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 12,
+                    padding: "10px 12px", textDecoration: "none", color: "#9A9590",
+                    fontSize: 12, fontFamily: "'DM Sans', sans-serif",
+                  }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4CAF50" strokeWidth="2.5">
+                      <circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                    </svg>
+                    OpenStreetMap
                   </a>
                 </div>
               );
