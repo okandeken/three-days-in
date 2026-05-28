@@ -98,6 +98,10 @@ export default async function handler(req, res) {
       const cached = await redis.get(cacheKey);
       if (cached) {
         console.log(`[three-days-in] Cache hit: ${cacheKey}`);
+        // Track even on cache hit
+        if (type === "itinerary") {
+          try { await fetch(`${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}/api/searches`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city }) }); } catch (_) {}
+        }
         return res.status(200).json({ text: cached, fromCache: true });
       }
     } catch (e) {
