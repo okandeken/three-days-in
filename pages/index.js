@@ -76,9 +76,17 @@ function guessType(name, lang) {
   return t.default;
 }
 
+const META_WORDS = ["itinerario", "itinerary", "días", "days", "día", "day", "visita", "aquí", "here", "presenta", "siguiente", "following", "bienvenido", "welcome"];
+
+function isMetaPlace(name) {
+  const n = name.toLowerCase();
+  return META_WORDS.some(w => n.includes(w)) || name.length > 55 || name.split(" ").length > 6;
+}
+
 function parseItinerary(text, lang) {
   const days = [];
-  const dayBlocks = text.split(/DAY\s*\d+[:\-]?/i).filter(Boolean);
+  // Split on DAY followed by a number
+  const dayBlocks = text.split(/\*{0,2}DAY\s*\d+\*{0,2}[:\-]?/i).filter(Boolean);
   dayBlocks.forEach((block, i) => {
     const places = [];
     block.split("\n").filter((l) => l.trim()).forEach((line) => {
@@ -86,12 +94,16 @@ function parseItinerary(text, lang) {
       if (!clean || clean.length < 3) return;
       const match = clean.match(/^([^:(]+)[:(]\s*(.+)/);
       if (match) {
-        places.push({ name: match[1].trim(), description: match[2].trim(), type: guessType(match[1], lang) });
-      } else if (clean.length > 5 && clean.length < 60) {
+        const name = match[1].trim();
+        if (!isMetaPlace(name)) {
+          places.push({ name, description: match[2].trim(), type: guessType(name, lang) });
+        }
+      } else if (clean.length > 4 && clean.length < 55 && !isMetaPlace(clean)) {
         places.push({ name: clean, description: "", type: T[lang].type.default });
       }
     });
-    if (places.length > 0) days.push({ day: i + 1, places });
+    // Only include blocks that have at least 2 real places (skip preamble blocks)
+    if (places.length >= 2) days.push({ day: days.length + 1, places });
   });
   return days.length > 0 ? days : null;
 }
@@ -418,9 +430,9 @@ export default function Home() {
         {/* Header */}
         <div style={{ padding: "52px 24px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 4 }}>
+            <button onClick={() => { setCity(null); setDays([]); setQuery(""); setErrorMsg(null); setFromCache(null); }} style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 4, cursor: "pointer", background: "none", border: "none", padding: 0, color: TEXT, WebkitTapHighlightColor: "transparent", textAlign: "left" }}>
               Three <span style={{ color: ACCENT }}>Days</span> In
-            </div>
+            </button>
             <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: "uppercase" }}>
               {tr.tagline}
             </div>
@@ -562,6 +574,29 @@ export default function Home() {
                 }}>{tr.day} {d.day}</button>
               ))}
             </div>
+
+            {/* Google Maps itinerary button */}
+            {(() => {
+              const places = days[activeDay]?.places || [];
+              if (places.length === 0) return null;
+              const waypoints = places.map(p => encodeURIComponent(p.name + " " + city));
+              const mapsUrl = `https://www.google.com/maps/dir/${waypoints.join("/")}`;
+              return (
+                <div style={{ padding: "0 24px 12px" }}>
+                  <a href={mapsUrl} target="_blank" rel="noreferrer" style={{
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    background: "#1A1A1A", border: "1px solid #2A2A2A", borderRadius: 12,
+                    padding: "10px 16px", textDecoration: "none", color: "#9A9590",
+                    fontSize: 13, fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    Ver itinerario del día en Maps
+                  </a>
+                </div>
+              );
+            })()}
 
             {/* Places */}
             <div style={{ padding: "0 24px 80px", display: "flex", flexDirection: "column", gap: 12 }}>
