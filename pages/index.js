@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Head from "next/head";
 
 const ACCENT = "#E8C547";
@@ -283,7 +283,7 @@ function PlaceCard({ place, index, city, lang }) {
 }
 
 export default function Home() {
-  const [lang, setLang] = useState("es");
+  const [lang, setLang] = useState("en");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState(null);
@@ -296,6 +296,27 @@ export default function Home() {
   const inputRef = useRef();
   const debounceRef = useRef(null);
   const tr = T[lang];
+
+  const [dynamicSuggestions, setDynamicSuggestions] = useState([]);
+
+  // Load saved language on mount, default to "en"
+  useEffect(() => {
+    const saved = typeof window !== "undefined" && localStorage.getItem("tdi_lang");
+    if (saved && ["es", "en", "gl"].includes(saved)) setLang(saved);
+  }, []);
+
+  // Fetch top searched cities
+  useEffect(() => {
+    fetch("/api/searches")
+      .then(r => r.json())
+      .then(d => { if (d.suggestions?.length) setDynamicSuggestions(d.suggestions); })
+      .catch(() => {});
+  }, []);
+
+  // Save language whenever it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") localStorage.setItem("tdi_lang", lang);
+  }, [lang]);
 
   const fetchSuggestions = (value) => {
     clearTimeout(debounceRef.current);
@@ -502,7 +523,7 @@ export default function Home() {
             <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontStyle: "italic", marginBottom: 8 }}>{tr.welcomeTitle}</div>
             <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>{tr.welcomeSub}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 24 }}>
-              {tr.suggestions.map((s) => (
+              {(dynamicSuggestions.length > 0 ? dynamicSuggestions : tr.suggestions).map((s) => (
                 <button key={s} onClick={() => { setQuery(s); handleSearch(s); }} style={{
                   background: CARD, border: "1px solid #222", borderRadius: 20,
                   padding: "7px 14px", fontSize: 13, color: MUTED, cursor: "pointer",
