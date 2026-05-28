@@ -8,51 +8,75 @@ const CARD2 = "#1C1C1C";
 const TEXT = "#F0EDE6";
 const MUTED = "#7A7570";
 
-const SUGGESTIONS = ["Atenas", "Tokio", "Lisboa", "Nueva York", "Marrakech", "Dubrovnik"];
+const T = {
+  es: {
+    tagline: "Itinerarios con alma",
+    placeholder: "Ciudad o país...",
+    loadingText: "Preparando tu itinerario",
+    welcomeTitle: "¿A dónde vas?",
+    welcomeSub: "Escribe una ciudad o país y generaremos un itinerario de 3 días con historia incluida.",
+    changeDestination: "← Cambiar destino",
+    historyLabel: "Historia & Curiosidades",
+    historyLoading: "Buscando historia...",
+    days: "días",
+    day: "Día",
+    aiTag: "Itinerario IA",
+    suggestions: ["Atenas", "Tokio", "Lisboa", "Nueva York", "Marrakech", "Dubrovnik"],
+    type: {
+      museum: "Museo", temple: "Templo / Iglesia", square: "Plaza / Parque",
+      food: "Gastronomía", monument: "Monumento histórico", default: "Punto de interés",
+    },
+  },
+  en: {
+    tagline: "Itineraries with soul",
+    placeholder: "City or country...",
+    loadingText: "Preparing your itinerary",
+    welcomeTitle: "Where are you going?",
+    welcomeSub: "Type a city or country and we'll generate a 3-day itinerary with history included.",
+    changeDestination: "← Change destination",
+    historyLabel: "History & Curiosities",
+    historyLoading: "Loading history...",
+    days: "days",
+    day: "Day",
+    aiTag: "AI Itinerary",
+    suggestions: ["Athens", "Tokyo", "Lisbon", "New York", "Marrakech", "Dubrovnik"],
+    type: {
+      museum: "Museum", temple: "Temple / Church", square: "Square / Park",
+      food: "Food & Drink", monument: "Historic monument", default: "Point of interest",
+    },
+  },
+  gl: {
+    tagline: "Itinerarios con alma",
+    placeholder: "Cidade ou país...",
+    loadingText: "Preparando o teu itinerario",
+    welcomeTitle: "A onde vas?",
+    welcomeSub: "Escribe unha cidade ou país e crearemos un itinerario de 3 días con historia incluída.",
+    changeDestination: "← Cambiar destino",
+    historyLabel: "Historia & Curiosidades",
+    historyLoading: "Buscando historia...",
+    days: "días",
+    day: "Día",
+    aiTag: "Itinerario IA",
+    suggestions: ["Atenas", "Tokio", "Lisboa", "Nova York", "Marrakech", "Dubrovnik"],
+    type: {
+      museum: "Museo", temple: "Templo / Igrexa", square: "Praza / Parque",
+      food: "Gastronomía", monument: "Monumento histórico", default: "Punto de interese",
+    },
+  },
+};
 
-async function callClaude(messages) {
-  const res = await fetch("/api/claude", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ messages, max_tokens: 1000 }),
-  });
-  const data = await res.json();
-  return data.content?.find((b) => b.type === "text")?.text || "";
+function guessType(name, lang) {
+  const n = name.toLowerCase();
+  const t = T[lang].type;
+  if (n.includes("museo") || n.includes("museum") || n.includes("galería") || n.includes("gallery")) return t.museum;
+  if (n.includes("iglesia") || n.includes("catedral") || n.includes("templo") || n.includes("church") || n.includes("cathedral") || n.includes("igrexa")) return t.temple;
+  if (n.includes("plaza") || n.includes("parque") || n.includes("jardín") || n.includes("park") || n.includes("square") || n.includes("praza")) return t.square;
+  if (n.includes("restaurante") || n.includes("café") || n.includes("mercado") || n.includes("market") || n.includes("restaurant")) return t.food;
+  if (n.includes("castillo") || n.includes("palacio") || n.includes("fortaleza") || n.includes("castle") || n.includes("palace")) return t.monument;
+  return t.default;
 }
 
-async function generateItinerary(city) {
-  return callClaude([{
-    role: "user",
-    content: `Create a 3-day travel itinerary for ${city}. Format it EXACTLY like this:
-
-DAY 1:
-- Place Name: Brief one-sentence description of what to do/see there.
-- Place Name: Brief one-sentence description.
-- Place Name: Brief one-sentence description.
-- Place Name: Brief one-sentence description.
-
-DAY 2:
-- Place Name: Brief one-sentence description.
-- Place Name: Brief one-sentence description.
-- Place Name: Brief one-sentence description.
-
-DAY 3:
-- Place Name: Brief one-sentence description.
-- Place Name: Brief one-sentence description.
-- Place Name: Brief one-sentence description.
-
-Include 3-5 places per day. Mix monuments, neighborhoods, restaurants, and hidden gems. Keep descriptions under 15 words each. Use the original local place names.`,
-  }]);
-}
-
-async function generateHistory(placeName, city) {
-  return callClaude([{
-    role: "user",
-    content: `Write a short, fascinating 3-4 sentence historical/cultural summary about "${placeName}" in ${city}. Make it engaging and educational — things a curious traveler would love to know before visiting. Be concise but vivid. No bullet points, just flowing prose.`,
-  }]);
-}
-
-function parseItinerary(text) {
+function parseItinerary(text, lang) {
   const days = [];
   const dayBlocks = text.split(/DAY\s*\d+[:\-]?/i).filter(Boolean);
   dayBlocks.forEach((block, i) => {
@@ -62,9 +86,9 @@ function parseItinerary(text) {
       if (!clean || clean.length < 3) return;
       const match = clean.match(/^([^:(]+)[:(]\s*(.+)/);
       if (match) {
-        places.push({ name: match[1].trim(), description: match[2].trim(), type: guessType(match[1]) });
+        places.push({ name: match[1].trim(), description: match[2].trim(), type: guessType(match[1], lang) });
       } else if (clean.length > 5 && clean.length < 60) {
-        places.push({ name: clean, description: "", type: "Lugar de interés" });
+        places.push({ name: clean, description: "", type: T[lang].type.default });
       }
     });
     if (places.length > 0) days.push({ day: i + 1, places });
@@ -72,27 +96,28 @@ function parseItinerary(text) {
   return days.length > 0 ? days : null;
 }
 
-function guessType(name) {
-  const n = name.toLowerCase();
-  if (n.includes("museo") || n.includes("museum") || n.includes("galería")) return "Museo";
-  if (n.includes("iglesia") || n.includes("catedral") || n.includes("templo") || n.includes("mezquita")) return "Templo / Iglesia";
-  if (n.includes("plaza") || n.includes("parque") || n.includes("jardín")) return "Plaza / Parque";
-  if (n.includes("restaurante") || n.includes("café") || n.includes("mercado")) return "Gastronomía";
-  if (n.includes("castillo") || n.includes("palacio") || n.includes("fortaleza")) return "Monumento histórico";
-  return "Punto de interés";
+async function callAPI(body) {
+  const res = await fetch("/api/claude", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  return data.text || "";
 }
 
-function PlaceCard({ place, index, city }) {
+function PlaceCard({ place, index, city, lang }) {
   const [expanded, setExpanded] = useState(false);
   const [history, setHistory] = useState(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const tr = T[lang];
 
   const toggle = async () => {
     if (!expanded && !history) {
       setExpanded(true);
       setLoadingHistory(true);
-      const h = await generateHistory(place.name, city);
-      setHistory(h);
+      const text = await callAPI({ type: "history", city, placeName: place.name, lang });
+      setHistory(text);
       setLoadingHistory(false);
     } else {
       setExpanded(!expanded);
@@ -105,9 +130,11 @@ function PlaceCard({ place, index, city }) {
     <div style={{
       background: CARD, borderRadius: 16, overflow: "hidden",
       border: `1px solid ${expanded ? "#2E2E2E" : "#1E1E1E"}`,
-      animation: `fadeIn 0.4s ease forwards`, animationDelay: `${index * 0.06}s`, opacity: 0,
+      animation: "fadeIn 0.4s ease forwards",
+      animationDelay: `${index * 0.06}s`,
+      opacity: 0,
     }}>
-      <div style={{ padding: "16px 16px 14px", cursor: "pointer", display: "flex", gap: 14, alignItems: "flex-start" }}>
+      <div style={{ padding: "16px 16px 14px", display: "flex", gap: 14, alignItems: "flex-start" }}>
         <div style={{
           width: 28, height: 28, borderRadius: 8, flexShrink: 0, marginTop: 2,
           background: index < 2 ? `${ACCENT}22` : "#1E1E1E",
@@ -121,7 +148,9 @@ function PlaceCard({ place, index, city }) {
             {place.name}
           </div>
           <div style={{ fontSize: 11, color: MUTED, textTransform: "uppercase", letterSpacing: "1.2px" }}>{place.type}</div>
-          {place.description && <div style={{ fontSize: 13, color: "#9A9590", lineHeight: 1.5, marginTop: 4 }}>{place.description}</div>}
+          {place.description && (
+            <div style={{ fontSize: 13, color: "#9A9590", lineHeight: 1.5, marginTop: 4 }}>{place.description}</div>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
@@ -131,7 +160,7 @@ function PlaceCard({ place, index, city }) {
             fontSize: 11, color: MUTED, fontFamily: "'DM Sans', sans-serif", whiteSpace: "nowrap",
           }}>
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
             </svg>
             Maps
           </a>
@@ -142,7 +171,7 @@ function PlaceCard({ place, index, city }) {
             transition: "transform 0.2s, color 0.15s",
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 9l-7 7-7-7"/>
+              <path d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
@@ -151,13 +180,12 @@ function PlaceCard({ place, index, city }) {
       {expanded && (
         <div style={{ borderTop: "1px solid #1E1E1E", background: CARD2, padding: 16 }}>
           <div style={{ fontSize: 10, color: ACCENT, textTransform: "uppercase", letterSpacing: 2, fontWeight: 500, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
-            ✦ Historia & Curiosidades
+            ✦ {tr.historyLabel}
           </div>
-          {loadingHistory ? (
-            <div style={{ fontSize: 13, color: MUTED }}>Buscando historia...</div>
-          ) : (
-            <div style={{ fontSize: 13.5, lineHeight: 1.7, color: "#B0ABA5" }}>{history}</div>
-          )}
+          {loadingHistory
+            ? <div style={{ fontSize: 13, color: MUTED }}>{tr.historyLoading}</div>
+            : <div style={{ fontSize: 13.5, lineHeight: 1.7, color: "#B0ABA5" }}>{history}</div>
+          }
         </div>
       )}
     </div>
@@ -165,12 +193,14 @@ function PlaceCard({ place, index, city }) {
 }
 
 export default function Home() {
+  const [lang, setLang] = useState("es");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [city, setCity] = useState(null);
   const [days, setDays] = useState([]);
   const [activeDay, setActiveDay] = useState(0);
   const inputRef = useRef();
+  const tr = T[lang];
 
   const handleSearch = async (q) => {
     const target = q || query;
@@ -179,16 +209,22 @@ export default function Home() {
     setCity(null);
     setDays([]);
     try {
-      const text = await generateItinerary(target.trim());
-      const parsed = parseItinerary(text);
+      const text = await callAPI({ type: "itinerary", city: target.trim(), lang });
+      const parsed = parseItinerary(text, lang);
       setCity(target.trim());
-      setDays(parsed || [{ day: 1, places: [{ name: "Error generando itinerario", description: "Inténtalo de nuevo.", type: "" }] }]);
+      setDays(parsed || []);
       setActiveDay(0);
     } catch (e) { console.error(e); }
     setLoading(false);
   };
 
-  const reset = () => { setCity(null); setDays([]); setQuery(""); setTimeout(() => inputRef.current?.focus(), 100); };
+  const reset = () => {
+    setCity(null);
+    setDays([]);
+    setQuery("");
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
   const currentPlaces = days[activeDay]?.places || [];
 
   return (
@@ -207,19 +243,42 @@ export default function Home() {
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { background: ${BG}; color: ${TEXT}; font-family: 'DM Sans', sans-serif; }
         @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+        input { -webkit-appearance: none; }
         input::placeholder { color: ${MUTED}; }
         input:focus { outline: none; border-color: ${ACCENT} !important; }
         ::-webkit-scrollbar { display: none; }
+        a { transition: opacity 0.15s; }
+        a:hover { opacity: 0.8; }
       `}</style>
 
       <div style={{ maxWidth: 390, margin: "0 auto", minHeight: "100vh", background: BG }}>
+
         {/* Header */}
-        <div style={{ padding: "52px 24px 20px" }}>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 4 }}>
-            Three <span style={{ color: ACCENT }}>Days</span> In
+        <div style={{ padding: "52px 24px 20px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 28, fontWeight: 700, letterSpacing: -0.5, marginBottom: 4 }}>
+              Three <span style={{ color: ACCENT }}>Days</span> In
+            </div>
+            <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: "uppercase" }}>
+              {tr.tagline}
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: MUTED, letterSpacing: 2, textTransform: "uppercase", marginBottom: 24 }}>
-            Itinerarios con alma
+
+          {/* Language selector */}
+          <div style={{ display: "flex", gap: 4, marginTop: 6 }}>
+            {["es", "en", "gl"].map((l) => (
+              <button key={l} onClick={() => setLang(l)} style={{
+                padding: "5px 9px", borderRadius: 8, border: "none", cursor: "pointer",
+                background: lang === l ? ACCENT : "#1E1E1E",
+                color: lang === l ? "#000" : MUTED,
+                fontSize: 11, fontWeight: lang === l ? 600 : 400,
+                fontFamily: "'DM Sans', sans-serif",
+                textTransform: "uppercase", letterSpacing: 0.5,
+                transition: "all 0.15s",
+              }}>
+                {l}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -227,8 +286,12 @@ export default function Home() {
         <div style={{ position: "relative", margin: "0 24px 32px" }}>
           <input
             ref={inputRef}
-            style={{ width: "100%", background: CARD, border: `1px solid #2A2A2A`, borderRadius: 14, padding: "16px 56px 16px 20px", color: TEXT, fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 300, WebkitAppearance: "none" }}
-            placeholder="Ciudad o país..."
+            style={{
+              width: "100%", background: CARD, border: `1px solid #2A2A2A`,
+              borderRadius: 14, padding: "16px 56px 16px 20px",
+              color: TEXT, fontFamily: "'DM Sans', sans-serif", fontSize: 16, fontWeight: 300,
+            }}
+            placeholder={tr.placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -237,10 +300,10 @@ export default function Home() {
             position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
             background: ACCENT, border: "none", borderRadius: 10, width: 40, height: 40,
             cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-            opacity: loading || !query.trim() ? 0.4 : 1,
+            opacity: loading || !query.trim() ? 0.4 : 1, transition: "opacity 0.15s",
           }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
+              <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -249,9 +312,14 @@ export default function Home() {
         {loading && (
           <div style={{ padding: "60px 24px", textAlign: "center" }}>
             <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontStyle: "italic", marginBottom: 8 }}>{query}</div>
-            <div style={{ fontSize: 13, color: MUTED }}>Preparando tu itinerario</div>
+            <div style={{ fontSize: 13, color: MUTED }}>{tr.loadingText}</div>
             <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 20 }}>
-              {[0,1,2].map(i => <div key={i} style={{ width:6, height:6, borderRadius:"50%", background:ACCENT, animation:"fadeIn 1.2s ease infinite", animationDelay:`${i*0.2}s` }}/>)}
+              {[0, 1, 2].map((i) => (
+                <div key={i} style={{
+                  width: 6, height: 6, borderRadius: "50%", background: ACCENT,
+                  animation: "fadeIn 1.2s ease infinite", animationDelay: `${i * 0.2}s`,
+                }} />
+              ))}
             </div>
           </div>
         )}
@@ -260,15 +328,14 @@ export default function Home() {
         {!loading && !city && (
           <div style={{ padding: "0 24px 60px", textAlign: "center", animation: "fadeIn 0.4s ease" }}>
             <div style={{ fontSize: 48, marginBottom: 16 }}>✦</div>
-            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontStyle: "italic", marginBottom: 8 }}>¿A dónde vas?</div>
-            <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>
-              Escribe una ciudad o país y generaremos un itinerario de 3 días con historia incluida.
-            </div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 22, fontStyle: "italic", marginBottom: 8 }}>{tr.welcomeTitle}</div>
+            <div style={{ fontSize: 13, color: MUTED, lineHeight: 1.6, maxWidth: 280, margin: "0 auto" }}>{tr.welcomeSub}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 24 }}>
-              {SUGGESTIONS.map(s => (
+              {tr.suggestions.map((s) => (
                 <button key={s} onClick={() => { setQuery(s); handleSearch(s); }} style={{
-                  background: CARD, border: "1px solid #222", borderRadius: 20, padding: "7px 14px",
-                  fontSize: 13, color: MUTED, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                  background: CARD, border: "1px solid #222", borderRadius: 20,
+                  padding: "7px 14px", fontSize: 13, color: MUTED, cursor: "pointer",
+                  fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
                 }}>{s}</button>
               ))}
             </div>
@@ -281,12 +348,13 @@ export default function Home() {
             <div style={{ padding: "0 24px 24px", animation: "fadeIn 0.4s ease" }}>
               <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 38, fontWeight: 700, letterSpacing: -1, lineHeight: 1.1 }}>{city}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-                <span style={{ fontSize: 12, color: MUTED, letterSpacing: "1.5px", textTransform: "uppercase" }}>3 días</span>
-                <div style={{ width:3, height:3, background:MUTED, borderRadius:"50%" }}/>
-                <span style={{ fontSize: 11, color: ACCENT, letterSpacing: 1, textTransform: "uppercase", fontWeight: 500 }}>Itinerario IA</span>
+                <span style={{ fontSize: 12, color: MUTED, letterSpacing: "1.5px", textTransform: "uppercase" }}>3 {tr.days}</span>
+                <div style={{ width: 3, height: 3, background: MUTED, borderRadius: "50%" }} />
+                <span style={{ fontSize: 11, color: ACCENT, letterSpacing: 1, textTransform: "uppercase", fontWeight: 500 }}>{tr.aiTag}</span>
               </div>
             </div>
 
+            {/* Day tabs */}
             <div style={{ display: "flex", gap: 8, padding: "0 24px 24px", overflowX: "auto" }}>
               {days.map((d, i) => (
                 <button key={i} onClick={() => setActiveDay(i)} style={{
@@ -295,23 +363,24 @@ export default function Home() {
                   background: activeDay === i ? ACCENT : "transparent",
                   color: activeDay === i ? "#000" : MUTED,
                   fontFamily: "'DM Sans', sans-serif", fontSize: 13,
-                  fontWeight: activeDay === i ? 500 : 400,
-                }}>Día {d.day}</button>
+                  fontWeight: activeDay === i ? 500 : 400, transition: "all 0.15s",
+                }}>{tr.day} {d.day}</button>
               ))}
             </div>
 
+            {/* Places */}
             <div style={{ padding: "0 24px 80px", display: "flex", flexDirection: "column", gap: 12 }}>
               {currentPlaces.map((place, i) => (
-                <PlaceCard key={`${activeDay}-${i}`} place={place} index={i} city={city} />
+                <PlaceCard key={`${lang}-${activeDay}-${i}`} place={place} index={i} city={city} lang={lang} />
               ))}
             </div>
 
             <button onClick={reset} style={{
-              display: "block", margin: "0 24px 32px",
-              background: "none", border: "1px solid #2A2A2A", borderRadius: 10,
-              padding: "10px 20px", color: MUTED, fontFamily: "'DM Sans', sans-serif",
-              fontSize: 13, cursor: "pointer", width: "calc(100% - 48px)",
-            }}>← Cambiar destino</button>
+              display: "block", margin: "0 24px 32px", background: "none",
+              border: "1px solid #2A2A2A", borderRadius: 10, padding: "10px 20px",
+              color: MUTED, fontFamily: "'DM Sans', sans-serif", fontSize: 13,
+              cursor: "pointer", width: "calc(100% - 48px)", transition: "all 0.15s",
+            }}>{tr.changeDestination}</button>
           </>
         )}
       </div>
