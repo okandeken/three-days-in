@@ -142,5 +142,16 @@ export default async function handler(req, res) {
     }
   }
 
+  // Track search (fire and forget)
+  if (type === "itinerary" && text) {
+    try {
+      fetch(`${req.headers["x-forwarded-proto"] || "https"}://${req.headers.host}/api/searches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city }),
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
   res.status(200).json({ text, fromCache: false });
 }
