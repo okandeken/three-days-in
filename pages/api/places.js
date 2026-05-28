@@ -7,6 +7,8 @@ export default async function handler(req, res) {
   const response = await fetch(url);
   const data = await response.json();
 
+  console.log(`[places] status: ${data.status}, predictions: ${data.predictions?.length || 0}, error: ${data.error_message || "none"}`);
+
   const predictions = (data.predictions || []).map((p) => ({
     id: p.place_id,
     name: p.structured_formatting?.main_text || p.description,
