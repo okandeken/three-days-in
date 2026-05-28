@@ -28,7 +28,7 @@ DAY 3:
 - Nombre del lugar: Descripción breve.
 - Nombre del lugar: Descripción breve.
 
-Incluye 3-5 lugares por día. Mezcla monumentos, barrios, restaurantes y joyas ocultas. Descripciones de menos de 15 palabras. Usa los nombres locales originales de los lugares.`,
+Incluye 3-5 lugares por día. Mezcla monumentos, barrios, restaurantes y joyas ocultas. Descripciones de menos de 15 palabras. IMPORTANTE: escribe SIEMPRE los nombres de los lugares en caracteres latinos (nunca en griego, árabe, cirílico, chino ni ningún otro alfabeto no latino).`,
 
     en: (city) => `Create a 3-day travel itinerary for ${city}. Use EXACTLY this format:
 
@@ -48,7 +48,7 @@ DAY 3:
 - Place Name: Brief description.
 - Place Name: Brief description.
 
-Include 3-5 places per day. Mix monuments, neighborhoods, restaurants and hidden gems. Descriptions under 15 words. Use original local place names.`,
+Include 3-5 places per day. Mix monuments, neighborhoods, restaurants and hidden gems. Descriptions under 15 words. IMPORTANT: always write place names in Latin characters (never in Greek, Arabic, Cyrillic, Chinese or any other non-Latin script).`,
 
     gl: (city) => `Crea un itinerario de viaxe de 3 días para ${city} en galego. Usa EXACTAMENTE este formato:
 
@@ -68,7 +68,7 @@ DAY 3:
 - Nome do lugar: Descrición breve.
 - Nome do lugar: Descrición breve.
 
-Inclúe 3-5 lugares por día. Mestura monumentos, barrios, restaurantes e xoias agochadas. Descricións de menos de 15 palabras. Usa os nomes locais orixinais dos lugares.`,
+Inclúe 3-5 lugares por día. Mestura monumentos, barrios, restaurantes e xoias agochadas. Descricións de menos de 15 palabras. IMPORTANTE: escribe SEMPRE os nomes dos lugares en caracteres latinos (nunca en grego, árabe, cirílico, chinés nin ningún outro alfabeto non latino).`,
   },
 
   history: {
