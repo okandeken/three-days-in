@@ -212,7 +212,7 @@ export default function Home() {
     if (!value || value.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}`);
+        const res = await fetch(`/api/places?input=${encodeURIComponent(value)}&lang=${lang}`);
         const data = await res.json();
         setSuggestions(data.predictions || []);
         setShowSuggestions((data.predictions || []).length > 0);
