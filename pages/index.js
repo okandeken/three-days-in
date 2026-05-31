@@ -429,8 +429,9 @@ export default function Home() {
         <title>Three Days In</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#0D0D0D" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="theme-color" content="#FCF7EF" />
+        <link rel="apple-touch-icon" href="/icon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
       </Head>
@@ -479,9 +480,9 @@ export default function Home() {
       {authed && <div style={{ maxWidth: 390, margin: "0 auto", minHeight: "100vh", background: BG, position: "relative" }}>
 
         {/* Header */}
-        <div style={{ padding: "48px 24px 8px", display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+        <div style={{ padding: "max(56px, calc(env(safe-area-inset-top) + 20px)) 24px 8px", display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
           {/* Language selector top right */}
-          <div style={{ position: "absolute", top: 52, right: 24, display: "flex", gap: 4 }}>
+          <div style={{ position: "absolute", top: "max(52px, calc(env(safe-area-inset-top) + 16px))", right: 24, display: "flex", gap: 4 }}>
             {["es", "en", "gl"].map((l) => (
               <button key={l} onClick={() => setLang(l)} style={{
                 padding: "5px 9px", borderRadius: 8, border: "none", cursor: "pointer",
