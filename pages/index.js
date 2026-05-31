@@ -86,10 +86,17 @@ function isMetaPlace(name) {
 
 function parseItinerary(text, lang) {
   const days = [];
-  // Split on DAY followed by a number
-  const dayBlocks = text.split(/\*{0,2}DAY\s*\d+\*{0,2}[:\-]?/i).filter(Boolean);
-  dayBlocks.forEach((block, i) => {
+  // Split on DAY + number, capturing optional city name after colon
+  const dayPattern = /\*{0,2}DAY\s*\d+\*{0,2}(?:[:\-]\s*([^\n]+))?/gi;
+  const parts = text.split(/\*{0,2}DAY\s*\d+\*{0,2}[^\n]*/i).filter(Boolean);
+  const headers = [...text.matchAll(/\*{0,2}DAY\s*\d+\*{0,2}(?:[:\-]\s*([^\n]+))?/gi)];
+
+  parts.forEach((block, i) => {
     const places = [];
+    // Extract city name from header if present (for country mode)
+    const headerMatch = headers[i];
+    const cityName = headerMatch?.[1]?.trim().replace(/\*+/g, "") || null;
+
     block.split("\n").filter((l) => l.trim()).forEach((line) => {
       const clean = line.replace(/^[-*•\d.]+\s*/, "").trim();
       if (!clean || clean.length < 3) return;
@@ -103,8 +110,7 @@ function parseItinerary(text, lang) {
         places.push({ name: clean, description: "", type: T[lang].type.default });
       }
     });
-    // Only include blocks that have at least 2 real places (skip preamble blocks)
-    if (places.length >= 2) days.push({ day: days.length + 1, places });
+    if (places.length >= 2) days.push({ day: days.length + 1, cityName, places });
   });
   return days.length > 0 ? days : null;
 }
@@ -307,6 +313,8 @@ export default function Home() {
   const [activeDay, setActiveDay] = useState(0);
   const [errorMsg, setErrorMsg] = useState(null);
   const [fromCache, setFromCache] = useState(null);
+  const [isCountry, setIsCountry] = useState(false);
+  const [order, setOrder] = useState("context");
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef();
@@ -369,10 +377,10 @@ export default function Home() {
     setQuery(s.name);
     setSuggestions([]);
     setShowSuggestions(false);
-    handleSearch(s.name);
+    handleSearch(s.name, s.isCountry || false);
   };
 
-  const handleSearch = async (q) => {
+  const handleSearch = async (q, countryFlag = false) => {
     const target = q || query;
     if (!target.trim()) return;
     setLoading(true);
@@ -380,11 +388,12 @@ export default function Home() {
     setDays([]);
     setErrorMsg(null);
     setFromCache(null);
+    setIsCountry(countryFlag);
     try {
       const res = await fetch("/api/claude", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "itinerary", city: target.trim(), lang }),
+        body: JSON.stringify({ type: "itinerary", city: target.trim(), lang, isCountry: countryFlag, order }),
       });
       const data = await res.json();
       if (data.error) {
@@ -604,6 +613,11 @@ export default function Home() {
           <>
             <div style={{ padding: "0 24px 24px", animation: "fadeIn 0.4s ease" }}>
               <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 38, fontWeight: 700, letterSpacing: -1, lineHeight: 1.1 }}>{city}</div>
+              {isCountry && days[activeDay]?.cityName && (
+                <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 20, fontStyle: "italic", color: ACCENT, marginTop: 2 }}>
+                  {days[activeDay].cityName}
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
                 <span style={{ fontSize: 12, color: MUTED, letterSpacing: "1.5px", textTransform: "uppercase" }}>3 {tr.days}</span>
                 <div style={{ width: 3, height: 3, background: MUTED, borderRadius: "50%" }} />
@@ -619,12 +633,32 @@ export default function Home() {
               {days.map((d, i) => (
                 <button key={i} onClick={() => setActiveDay(i)} style={{
                   flexShrink: 0, padding: "8px 18px", borderRadius: 20, cursor: "pointer",
-                  border: `1px solid ${activeDay === i ? ACCENT : "#2A2A2A"}`,
+                  border: `1px solid ${activeDay === i ? ACCENT : "#D4C9BC"}`,
                   background: activeDay === i ? ACCENT : "transparent",
                   color: activeDay === i ? "#fff" : MUTED,
                   fontFamily: "'DM Sans', sans-serif", fontSize: 13,
                   fontWeight: activeDay === i ? 500 : 400, transition: "all 0.15s",
-                }}>{tr.day} {d.day}</button>
+                  whiteSpace: "nowrap",
+                }}>
+                  {isCountry && d.cityName ? d.cityName : `${tr.day} ${d.day}`}
+                </button>
+              ))}
+            </div>
+
+            {/* Order toggle */}
+            <div style={{ display: "flex", gap: 8, padding: "0 24px 16px", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: MUTED, letterSpacing: 1, textTransform: "uppercase" }}>
+                {lang === "en" ? "Order:" : "Orden:"}
+              </span>
+              {[["context", lang === "en" ? "Context" : lang === "gl" ? "Contexto" : "Contexto"],
+                ["proximity", lang === "en" ? "Proximity" : lang === "gl" ? "Proximidade" : "Cercanía"]].map(([val, label]) => (
+                <button key={val} onClick={() => setOrder(val)} style={{
+                  padding: "5px 12px", borderRadius: 20, cursor: "pointer", fontSize: 12,
+                  border: `1px solid ${order === val ? ACCENT : "#D4C9BC"}`,
+                  background: order === val ? ACCENT : "transparent",
+                  color: order === val ? "#fff" : MUTED,
+                  fontFamily: "'DM Sans', sans-serif", transition: "all 0.15s",
+                }}>{label}</button>
               ))}
             </div>
 
