@@ -10,7 +10,26 @@ try {
 
 const PROMPTS = {
   itinerary: {
-    es: (city) => `Crea un itinerario de viaje de 3 días para ${city}. Usa EXACTAMENTE este formato:
+    es: (city, isCountry, order) => isCountry ? `Crea un itinerario de viaje de 3 días por ${city}. Selecciona 3 ciudades que formen una ruta geográficamente lógica (conectadas por tren o coche en menos de 3-4 horas entre cada una, sin backtracking innecesario). Cada día = una ciudad. Usa EXACTAMENTE este formato:
+
+DAY 1: [Nombre Ciudad]
+- Nombre del lugar: Descripción breve en una frase de qué ver o hacer allí.
+- Nombre del lugar: Descripción breve.
+- Nombre del lugar: Descripción breve.
+- Nombre del lugar: Descripción breve.
+
+DAY 2: [Nombre Ciudad]
+- Nombre del lugar: Descripción breve.
+- Nombre del lugar: Descripción breve.
+- Nombre del lugar: Descripción breve.
+
+DAY 3: [Nombre Ciudad]
+- Nombre del lugar: Descripción breve.
+- Nombre del lugar: Descripción breve.
+- Nombre del lugar: Descripción breve.
+
+Incluye 3-5 lugares por ciudad. ${order === "proximity" ? "Ordena los lugares de cada ciudad por CERCANÍA geográfica entre ellos, para minimizar desplazamientos." : "Ordena los lugares de cada ciudad por CONTEXTO narrativo e histórico: visita primero lo que da contexto para entender mejor lo siguiente."} Mezcla monumentos, barrios, restaurantes y joyas ocultas. Descripciones de menos de 15 palabras. IMPORTANTE: escribe todos los nombres en caracteres latinos. Empieza DIRECTAMENTE con DAY 1: sin ningún texto previo.` :
+`Crea un itinerario de viaje de 3 días para ${city}. Usa EXACTAMENTE este formato:
 
 DAY 1:
 - Nombre del lugar: Descripción breve en una frase de qué ver o hacer allí.
@@ -28,9 +47,28 @@ DAY 3:
 - Nombre del lugar: Descripción breve.
 - Nombre del lugar: Descripción breve.
 
-Incluye 3-5 lugares por día. Mezcla monumentos, barrios, restaurantes y joyas ocultas. Descripciones de menos de 15 palabras. IMPORTANTE: escribe SIEMPRE los nombres de los lugares en caracteres latinos (nunca en griego, árabe, cirílico, chino ni ningún otro alfabeto no latino).`,
+Incluye 3-5 lugares por día. ${order === "proximity" ? "Ordena los lugares de cada día por CERCANÍA geográfica entre ellos, para minimizar desplazamientos." : "Ordena los lugares de cada día por CONTEXTO narrativo e histórico: visita primero lo que da contexto para entender mejor lo siguiente."} Mezcla monumentos, barrios, restaurantes y joyas ocultas. Descripciones de menos de 15 palabras. IMPORTANTE: escribe todos los nombres en caracteres latinos. Empieza DIRECTAMENTE con DAY 1: sin ningún texto previo.`,
 
-    en: (city) => `Create a 3-day travel itinerary for ${city}. Use EXACTLY this format:
+    en: (city, isCountry, order) => isCountry ? `Create a 3-day travel itinerary across ${city}. Select 3 cities forming a geographically logical route (connected by train or car in under 3-4 hours, no unnecessary backtracking). Each day = one city. Use EXACTLY this format:
+
+DAY 1: [City Name]
+- Place Name: Brief one-sentence description of what to do or see there.
+- Place Name: Brief description.
+- Place Name: Brief description.
+- Place Name: Brief description.
+
+DAY 2: [City Name]
+- Place Name: Brief description.
+- Place Name: Brief description.
+- Place Name: Brief description.
+
+DAY 3: [City Name]
+- Place Name: Brief description.
+- Place Name: Brief description.
+- Place Name: Brief description.
+
+Include 3-5 places per city. ${order === "proximity" ? "Order places in each city by GEOGRAPHIC PROXIMITY to minimize walking/travel between them." : "Order places in each city by NARRATIVE CONTEXT: visit first what gives context to understand what follows."} Mix monuments, neighborhoods, restaurants and hidden gems. Descriptions under 15 words. IMPORTANT: always write place names in Latin characters. Start DIRECTLY with DAY 1: with absolutely no introduction.` :
+`Create a 3-day travel itinerary for ${city}. Use EXACTLY this format:
 
 DAY 1:
 - Place Name: Brief one-sentence description of what to do or see there.
@@ -48,9 +86,27 @@ DAY 3:
 - Place Name: Brief description.
 - Place Name: Brief description.
 
-Include 3-5 places per day. Mix monuments, neighborhoods, restaurants and hidden gems. Descriptions under 15 words. IMPORTANT: always write place names in Latin characters (never in Greek, Arabic, Cyrillic, Chinese or any other non-Latin script).`,
+Include 3-5 places per day. ${order === "proximity" ? "Order places in each day by GEOGRAPHIC PROXIMITY to minimize walking between them." : "Order places in each day by NARRATIVE CONTEXT: visit first what gives context to understand what follows."} Mix monuments, neighborhoods, restaurants and hidden gems. Descriptions under 15 words. IMPORTANT: always write place names in Latin characters. Start DIRECTLY with DAY 1: absolutely no introduction.`,
 
-    gl: (city) => `Crea un itinerario de viaxe de 3 días para ${city} en galego. Usa EXACTAMENTE este formato:
+    gl: (city, isCountry, order) => isCountry ? `Crea un itinerario de viaxe de 3 días por ${city} en galego. Selecciona 3 cidades que formen unha ruta xeograficamente lóxica. Cada día = unha cidade. Usa EXACTAMENTE este formato:
+
+DAY 1: [Nome Cidade]
+- Nome do lugar: Descrición breve nunha frase de que ver ou facer alí.
+- Nome do lugar: Descrición breve.
+- Nome do lugar: Descrición breve.
+
+DAY 2: [Nome Cidade]
+- Nome do lugar: Descrición breve.
+- Nome do lugar: Descrición breve.
+- Nome do lugar: Descrición breve.
+
+DAY 3: [Nome Cidade]
+- Nome do lugar: Descrición breve.
+- Nome do lugar: Descrición breve.
+- Nome do lugar: Descrición breve.
+
+Inclúe 3-5 lugares por cidade. ${order === "proximity" ? "Ordena os lugares de cada cidade por PROXIMIDADE xeográfica." : "Ordena os lugares de cada cidade por CONTEXTO narrativo e histórico."} Descricións de menos de 15 palabras. IMPORTANTE: caracteres latinos sempre. Comeza DIRECTAMENTE con DAY 1: sen ningún texto previo.` :
+`Crea un itinerario de viaxe de 3 días para ${city} en galego. Usa EXACTAMENTE este formato:
 
 DAY 1:
 - Nome do lugar: Descrición breve nunha frase de que ver ou facer alí.
@@ -68,7 +124,7 @@ DAY 3:
 - Nome do lugar: Descrición breve.
 - Nome do lugar: Descrición breve.
 
-Inclúe 3-5 lugares por día. Mestura monumentos, barrios, restaurantes e xoias agochadas. Descricións de menos de 15 palabras. IMPORTANTE: escribe SEMPRE os nomes dos lugares en caracteres latinos (nunca en grego, árabe, cirílico, chinés nin ningún outro alfabeto non latino).`,
+Inclúe 3-5 lugares por día. ${order === "proximity" ? "Ordena os lugares de cada día por PROXIMIDADE xeográfica." : "Ordena os lugares de cada día por CONTEXTO narrativo e histórico."} Descricións de menos de 15 palabras. IMPORTANTE: caracteres latinos sempre. Comeza DIRECTAMENTE con DAY 1: sen ningún texto previo.`,
   },
 
   history: {
@@ -78,18 +134,20 @@ Inclúe 3-5 lugares por día. Mestura monumentos, barrios, restaurantes e xoias 
   },
 };
 
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const { type, city, placeName, lang = "es" } = req.body;
+  const { type, city, placeName, lang = "es", isCountry = false, order = "context" } = req.body;
   if (!type || !city) return res.status(400).json({ error: "Missing params" });
 
   const safeCity = city.toLowerCase().trim().replace(/\s+/g, "-");
   const safeLang = ["es", "en", "gl"].includes(lang) ? lang : "es";
 
+  const safeOrder = ["proximity", "context"].includes(order) ? order : "context";
   const cacheKey =
     type === "itinerary"
-      ? `itinerary:${safeLang}:${safeCity}`
+      ? `itinerary:${safeLang}:${safeCity}:${safeOrder}${isCountry ? ":country" : ""}`
       : `history:${safeLang}:${safeCity}:${placeName?.toLowerCase().trim().replace(/\s+/g, "-")}`;
 
   // Try cache first
@@ -112,7 +170,7 @@ export default async function handler(req, res) {
   // Build prompt
   const prompt =
     type === "itinerary"
-      ? PROMPTS.itinerary[safeLang](city)
+      ? PROMPTS.itinerary[safeLang](city, isCountry, safeOrder)
       : PROMPTS.history[safeLang](placeName, city);
 
   console.log(`[three-days-in] Calling Anthropic for ${type}: ${city}`);
