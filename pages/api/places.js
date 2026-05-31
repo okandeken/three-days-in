@@ -30,7 +30,8 @@ export default async function handler(req, res) {
       const localName = p.address?.city || p.address?.town || p.address?.village || p.name;
       const displayName = enName || glName || localName;
       const country = p.address?.country || "";
-      return { id: p.place_id, name: displayName, full: `${displayName}, ${country}` };
+      const isCountry = p.type === "country" || (p.class === "boundary" && p.addresstype === "country");
+      return { id: p.place_id, name: displayName, full: `${displayName}, ${country}`, isCountry };
     });
 
   res.status(200).json({ predictions });
